@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nexus — Chat</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0d0d0f;
+  --bg2: #131316;
+  --bg3: #1a1a1f;
+  --bg4: #22222a;
+  --border: #2a2a35;
+  --text: #e8e8f0;
+  --text2: #9090a8;
+  --text3: #5a5a70;
+  --accent: #7c6af7;
+  --accent2: #9d8fff;
+  --accent-glow: rgba(124,106,247,0.18);
+  --green: #34d399;
+  --red: #f87171;
+  --gold: #fbbf24;
+  --mention: #fbbf2422;
+  --mention-border: #fbbf24;
+  --bot-bg: #1e1a3a;
+  --bot-border: #7c6af7;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+/* ─── AUTH SCREEN ─── */
+#auth-screen {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 30% 20%, rgba(124,106,247,0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 80%, rgba(52,211,153,0.06) 0%, transparent 50%),
+              var(--bg);
+}
+
+.auth-card {
+  width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: var(--shadow), 0 0 80px rgba(124,106,247,0.08);
+}
+
+.auth-logo {
+  text-align: center; margin-bottom: 32px;
+}
+.auth-logo .wordmark {
+  font-family: 'Space Mono', monospace;
+  font-size: 28px; font-weight: 700;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent2), var(--green));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.auth-logo .tagline {
+  font-size: 12px; color: var(--text3); margin-top: 4px; letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+.auth-tabs {
+  display: flex; gap: 4px; background: var(--bg3);
+  border-radius: var(--radius-sm); padding: 4px; margin-bottom: 28px;
+}
+.auth-tab {
+  flex: 1; padding: 8px; border: none; border-radius: 6px;
+  background: transparent; color: var(--text2); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+  transition: all .2s;
+}
+.auth-tab.active { background: var(--bg4); color: var(--text); }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2);
+  letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+.form-input {
+  width: 100%; padding: 12px 14px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 14px;
+  outline: none; transition: border-color .2s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text3); }
+
+.btn-primary {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--accent), #5b4fd4);
+  border: none; border-radius: var(--radius-sm);
+  color: white; font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  margin-top: 8px;
+}
+.btn-primary:hover { opacity: .9; }
+.btn-primary:active { transform: scale(.98); }
+
+.auth-demo {
+  margin-top: 20px; padding: 14px; background: var(--bg3);
+  border-radius: var(--radius-sm); border: 1px dashed var(--border);
+}
+.auth-demo p { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
+.demo-accounts { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-pill {
+  padding: 4px 10px; background: var(--bg4);
+  border-radius: 20px; font-size: 11px; color: var(--text2);
+  cursor: pointer; transition: color .2s;
+  font-family: 'Space Mono', monospace;
+}
+.demo-pill:hover { color: var(--accent2); }
+
+.auth-error {
+  color: var(--red); font-size: 13px; text-align: center;
+  margin-top: 12px; min-height: 18px;
+}
+
+/* ─── MAIN APP ─── */
+#app {
+  display: none; height: 100vh;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 1fr;
+}
+#app.show { display: grid; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 16px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent2), var(--green));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  flex: 1;
+}
+.sidebar-actions { display: flex; gap: 6px; }
+.icon-btn {
+  width: 30px; height: 30px; border: none; border-radius: 6px;
+  background: var(--bg3); color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: all .15s;
+}
+.icon-btn:hover { background: var(--bg4); color: var(--text); }
+
+.sidebar-me {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: white; flex-shrink: 0;
+  position: relative;
+}
+.avatar.lg { width: 40px; height: 40px; font-size: 15px; }
+.avatar.xl { width: 48px; height: 48px; font-size: 18px; }
+.online-dot {
+  position: absolute; bottom: 0; right: 0;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--green); border: 2px solid var(--bg2);
+}
+
+.me-info { flex: 1; min-width: 0; }
+.me-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me-handle { font-size: 11px; color: var(--text3); font-family: 'Space Mono', monospace; }
+.logout-btn {
+  font-size: 11px; color: var(--text3); background: none; border: none;
+  cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: color .2s;
+}
+.logout-btn:hover { color: var(--red); }
+
+.sidebar-scroll { flex: 1; overflow-y: auto; padding: 8px 0; }
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.section-label {
+  padding: 10px 16px 4px;
+  font-size: 10px; font-weight: 700; color: var(--text3);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.section-label button {
+  font-size: 16px; line-height: 1; background: none; border: none;
+  color: var(--text3); cursor: pointer; transition: color .2s;
+}
+.section-label button:hover { color: var(--accent2); }
+
+.channel-item {
+  padding: 7px 16px;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; border-radius: 0;
+  transition: background .15s;
+  position: relative;
+}
+.channel-item:hover { background: var(--bg3); }
+.channel-item.active { background: var(--accent-glow); }
+.channel-item.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
+}
+.channel-icon { font-size: 16px; width: 20px; text-align: center; }
+.channel-info { flex: 1; min-width: 0; }
+.channel-name { font-size: 13px; font-weight: 500; color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.channel-item.active .channel-name { color: var(--text); font-weight: 600; }
+.unread-badge {
+  min-width: 18px; height: 18px; border-radius: 9px;
+  background: var(--accent); color: white;
+  font-size: 10px; font-weight: 700; padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ─── MAIN AREA ─── */
+.main {
+  display: flex; flex-direction: column; overflow: hidden; background: var(--bg);
+}
+
+.chat-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg2);
+}
+.chat-header-icon { font-size: 20px; }
+.chat-header-info { flex: 1; min-width: 0; }
+.chat-header-name { font-size: 15px; font-weight: 600; }
+.chat-header-sub { font-size: 12px; color: var(--text3); }
+.chat-header-actions { display: flex; gap: 8px; }
+
+.messages {
+  flex: 1; overflow-y: auto; padding: 16px 0;
+  display: flex; flex-direction: column;
+}
+.messages::-webkit-scrollbar { width: 6px; }
+.messages::-webkit-scrollbar-track { background: transparent; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.msg-group {
+  padding: 6px 20px;
+  display: flex; gap: 12px; align-items: flex-start;
+  transition: background .1s;
+}
+.msg-group:hover { background: rgba(255,255,255,0.02); }
+.msg-group.mention { background: var(--mention); border-left: 3px solid var(--mention-border); padding-left: 17px; }
+.msg-group.bot-msg { background: var(--bot-bg); border-left: 3px solid var(--bot-border); padding-left: 17px; }
+
+.msg-body { flex: 1; min-width: 0; }
+.msg-meta { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.msg-author { font-size: 13px; font-weight: 700; }
+.msg-time { font-size: 11px; color: var(--text3); font-family: 'Space Mono', monospace; }
+.msg-text { font-size: 14px; line-height: 1.55; color: var(--text); word-wrap: break-word; }
+.mention-tag { color: var(--gold); font-weight: 600; }
+.bot-tag { color: var(--accent2); font-weight: 600; }
+.bot-label {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--accent2);
+  background: rgba(124,106,247,0.15); border-radius: 4px;
+  padding: 1px 6px; margin-left: 6px;
+}
+
+/* Typing indicator */
+.typing-bar {
+  padding: 4px 20px 2px;
+  font-size: 12px; color: var(--text3); min-height: 22px;
+  font-style: italic;
+}
+
+/* ─── INPUT AREA ─── */
+.input-area {
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.input-wrapper {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color .2s;
+  position: relative;
+}
+.input-wrapper:focus-within { border-color: var(--accent); }
+
+.autocomplete-list {
+  position: absolute; bottom: 100%; left: 0; right: 0;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+  max-height: 200px; overflow-y: auto;
+  box-shadow: var(--shadow); z-index: 50;
+}
+.autocomplete-item {
+  padding: 8px 12px; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: background .1s;
+  font-size: 13px;
+}
+.autocomplete-item:hover, .autocomplete-item.selected { background: var(--accent-glow); }
+.autocomplete-handle { color: var(--text3); font-family: 'Space Mono', monospace; font-size: 11px; }
+
+#message-input {
+  width: 100%; padding: 13px 16px;
+  background: transparent; border: none;
+  color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+  outline: none; resize: none; max-height: 120px;
+}
+#message-input::placeholder { color: var(--text3); }
+
+.input-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px 8px;
+}
+.input-hint { font-size: 11px; color: var(--text3); }
+.send-btn {
+  padding: 7px 18px; background: var(--accent);
+  border: none; border-radius: 8px; color: white;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.send-btn:hover { background: var(--accent2); }
+.send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--text3); gap: 12px;
+}
+.empty-state .big-icon { font-size: 52px; opacity: .4; }
+.empty-state h3 { font-size: 18px; color: var(--text2); }
+.empty-state p { font-size: 13px; text-align: center; max-width: 300px; line-height: 1.5; }
+
+/* ─── MODALS ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px;
+  width: 460px; max-width: 95vw;
+  box-shadow: var(--shadow);
+}
+.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.btn-secondary {
+  padding: 9px 18px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text2); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn-secondary:hover { background: var(--bg4); color: var(--text); }
+
+.btn-sm {
+  padding: 6px 12px; border: none; border-radius: 6px;
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  font-weight: 600; cursor: pointer; transition: all .15s;
+  background: var(--accent); color: white;
+}
+.btn-sm:hover { background: var(--accent2); }
+
+.members-picker { margin-top: 12px; }
+.user-list { max-height: 180px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; }
+.user-check-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; cursor: pointer;
+  transition: background .1s;
+}
+.user-check-item:hover { background: var(--bg3); }
+.user-check-item input[type=checkbox] { accent-color: var(--accent); }
+
+.emoji-grid {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.emoji-opt {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--bg3); border: 2px solid transparent;
+  font-size: 18px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.emoji-opt:hover { border-color: var(--border); background: var(--bg4); }
+.emoji-opt.selected { border-color: var(--accent); background: var(--accent-glow); }
+
+/* ─── DATE DIVIDER ─── */
+.date-divider {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; color: var(--text3); font-size: 11px;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.date-divider::before, .date-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ─── TOAST ─── */
+.toast-container {
+  position: fixed; bottom: 20px; right: 20px;
+  z-index: 999; display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 10px 16px; border-radius: 10px;
+  background: var(--bg3); border: 1px solid var(--border);
+  font-size: 13px; color: var(--text);
+  box-shadow: var(--shadow);
+  animation: slide-in .3s ease;
+}
+.toast.success { border-color: var(--green); color: var(--green); }
+.toast.error { border-color: var(--red); color: var(--red); }
+
+@keyframes slide-in {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fade-up {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.msg-group { animation: fade-up .2s ease; }
+
+/* ─── RESPONSIVE / SCROLLBAR ─── */
+.no-chat {
+  display: flex; flex: 1; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+
+.divider { height: 1px; background: var(--border); margin: 8px 16px; }
+
+/* DM user status ring */
+.avatar.online::after {
+  content: '';
+  position: absolute; bottom: -1px; right: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--green); border: 2px solid var(--bg2);
+}
+</style>
+</head>
+<body>
+
+<!-- ─── AUTH ─── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="wordmark">NEXUS</div>
+      <div class="tagline">Real-time group & direct messaging</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchTab('register')">Create Account</button>
+    </div>
+
+    <!-- Login -->
+    <div id="tab-login">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="login-username" type="text" placeholder="your_handle" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Sign In →</button>
+    </div>
+
+    <!-- Register -->
+    <div id="tab-register" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="reg-username" type="text" placeholder="choose_a_handle"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input class="form-input" id="reg-display" type="text" placeholder="Your Name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="reg-password" type="password" placeholder="••••••••"/>
+      </div>
+      <button class="btn-primary" onclick="doRegister()">Create Account →</button>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+
+    <div class="auth-demo">
+      <p>💡 Demo accounts (password: <code style="color:var(--accent2)">password</code>)</p>
+      <div class="demo-accounts">
+        <div class="demo-pill" onclick="quickLogin('alice')">@alice</div>
+        <div class="demo-pill" onclick="quickLogin('bob')">@bob</div>
+        <div class="demo-pill" onclick="quickLogin('carol')">@carol</div>
+        <div class="demo-pill" onclick="quickLogin('dave')">@dave</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── APP ─── -->
+<div id="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">NEXUS</span>
+      <div class="sidebar-actions">
+        <button class="icon-btn" onclick="showCreateGroupModal()" title="New Group">＋</button>
+      </div>
+    </div>
+
+    <div class="sidebar-me">
+      <div class="avatar" id="me-avatar">?</div>
+      <div class="me-info">
+        <div class="me-name" id="me-display-name">—</div>
+        <div class="me-handle" id="me-handle">@—</div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">↩ Out</button>
+    </div>
+
+    <div class="sidebar-scroll">
+      <div class="section-label">
+        <span>Groups</span>
+        <button onclick="showCreateGroupModal()" title="New group">＋</button>
+      </div>
+      <div id="group-list"></div>
+
+      <div class="divider"></div>
+
+      <div class="section-label">
+        <span>Direct Messages</span>
+      </div>
+      <div id="dm-list"></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="main-area">
+    <div class="empty-state" id="welcome-state">
+      <div class="big-icon">💬</div>
+      <h3>Welcome to Nexus</h3>
+      <p>Pick a group or start a DM from the sidebar.<br/>Use <strong>@username</strong> to mention someone, <strong>@bot</strong> to ask the AI.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODALS ─── -->
+
+<!-- Create Group -->
+<div class="modal-overlay" id="modal-create-group">
+  <div class="modal">
+    <h2>✦ Create Group</h2>
+    <div class="form-group">
+      <label class="form-label">Icon</label>
+      <div class="emoji-grid" id="emoji-picker">
+        <div class="emoji-opt selected" data-emoji="💬" onclick="selectEmoji(this)">💬</div>
+        <div class="emoji-opt" data-emoji="🚀" onclick="selectEmoji(this)">🚀</div>
+        <div class="emoji-opt" data-emoji="🎯" onclick="selectEmoji(this)">🎯</div>
+        <div class="emoji-opt" data-emoji="⚡" onclick="selectEmoji(this)">⚡</div>
+        <div class="emoji-opt" data-emoji="🔥" onclick="selectEmoji(this)">🔥</div>
+        <div class="emoji-opt" data-emoji="🌙" onclick="selectEmoji(this)">🌙</div>
+        <div class="emoji-opt" data-emoji="🎮" onclick="selectEmoji(this)">🎮</div>
+        <div class="emoji-opt" data-emoji="🎵" onclick="selectEmoji(this)">🎵</div>
+        <div class="emoji-opt" data-emoji="📦" onclick="selectEmoji(this)">📦</div>
+        <div class="emoji-opt" data-emoji="🌿" onclick="selectEmoji(this)">🌿</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Group Name</label>
+      <input class="form-input" id="new-group-name" placeholder="e.g. Design Team"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description (optional)</label>
+      <input class="form-input" id="new-group-desc" placeholder="What's this group about?"/>
+    </div>
+    <div class="form-group members-picker">
+      <label class="form-label">Add Members</label>
+      <div class="user-list" id="member-checklist"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal('modal-create-group')">Cancel</button>
+      <button class="btn-primary" style="width:auto;padding:9px 22px" onclick="submitCreateGroup()">Create →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Member -->
+<div class="modal-overlay" id="modal-add-member">
+  <div class="modal">
+    <h2>＋ Add Member</h2>
+    <div class="form-group">
+      <label class="form-label">Select User</label>
+      <div class="user-list" id="add-member-list"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal('modal-add-member')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ─── STATE ───
+let me = null; // {username, displayName, avatarColor}
+let stompClient = null;
+let activeChat = null; // {type: 'group'|'dm', id, name, target}
+let allUsers = [];
+let myGroups = [];
+let unreadCounts = {};
+let selectedEmoji = '💬';
+let addMemberGroupId = null;
+let dmPartners = new Set(); // usernames I've DM'd
+let autocompleteUsers = [];
+let autocompleteIndex = -1;
+
+// ─── AUTH ───
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i === 0) === (tab==='login')));
+  document.getElementById('tab-login').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('tab-register').style.display = tab === 'register' ? '' : 'none';
+}
+
+function quickLogin(username) {
+  document.getElementById('login-username').value = username;
+  document.getElementById('login-password').value = 'password';
+  switchTab('login');
+  doLogin();
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) { setAuthError('Please fill in all fields'); return; }
+  try {
+    const res = await api('/api/auth/login', 'POST', {username, password});
+    if (res.success) { me = res; initApp(); }
+    else { setAuthError(res.message || 'Login failed'); }
+  } catch(e) { setAuthError('Server error. Is the app running?'); }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const displayName = document.getElementById('reg-display').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!username || !password) { setAuthError('Username and password required'); return; }
+  try {
+    const res = await api('/api/auth/register', 'POST', {username, password, displayName});
+    if (res.success) {
+      document.getElementById('login-username').value = username;
+      document.getElementById('login-password').value = password;
+      switchTab('login');
+      showToast('Account created! Signing in…', 'success');
+      doLogin();
+    } else { setAuthError(res.message || 'Registration failed'); }
+  } catch(e) { setAuthError('Server error'); }
+}
+
+async function doLogout() {
+  if (stompClient) stompClient.disconnect();
+  await api('/api/auth/logout?username=' + me.username, 'POST', null);
+  me = null; activeChat = null;
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+function setAuthError(msg) { document.getElementById('auth-error').textContent = msg; }
+
+// ─── INIT ───
+async function initApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+
+  // Set me info
+  document.getElementById('me-display-name').textContent = me.displayName;
+  document.getElementById('me-handle').textContent = '@' + me.username;
+  const meAvatar = document.getElementById('me-avatar');
+  meAvatar.textContent = initials(me.displayName);
+  meAvatar.style.background = me.avatarColor;
+
+  await loadUsers();
+  await loadGroups();
+  renderSidebar();
+  connectWebSocket();
+}
+
+async function loadUsers() {
+  try { allUsers = await api('/api/users'); } catch(e) { allUsers = []; }
+}
+
+async function loadGroups() {
+  try { myGroups = await api('/api/groups'); } catch(e) { myGroups = []; }
+}
+
+// ─── SIDEBAR ───
+function renderSidebar() {
+  // Groups
+  const gl = document.getElementById('group-list');
+  gl.innerHTML = myGroups.length ? myGroups.map(g => `
+    <div class="channel-item ${activeChat?.type==='group' && activeChat?.id===g.id ? 'active' : ''}"
+         onclick="openGroup(${g.id})">
+      <span class="channel-icon">${g.iconEmoji}</span>
+      <div class="channel-info">
+        <div class="channel-name">${escHtml(g.name)}</div>
+      </div>
+      ${unreadCounts['g'+g.id] ? `<span class="unread-badge">${unreadCounts['g'+g.id]}</span>` : ''}
+    </div>`).join('') : '<div style="padding:6px 16px;font-size:12px;color:var(--text3)">No groups yet</div>';
+
+  // DMs
+  const dl = document.getElementById('dm-list');
+  const dmUsers = allUsers.filter(u => dmPartners.has(u.username));
+  // Also show all users for easy DM start
+  const otherUsers = allUsers.filter(u => !dmPartners.has(u.username));
+  
+  dl.innerHTML = [...dmUsers, ...otherUsers].map(u => `
+    <div class="channel-item ${activeChat?.type==='dm' && activeChat?.target===u.username ? 'active' : ''}"
+         onclick="openDm('${u.username}', '${escHtml(u.displayName)}', '${u.avatarColor}')">
+      <div class="avatar" style="background:${u.avatarColor};width:22px;height:22px;font-size:10px;flex-shrink:0">${initials(u.displayName)}</div>
+      <div class="channel-info">
+        <div class="channel-name">${escHtml(u.displayName)}</div>
+      </div>
+      <span style="width:8px;height:8px;border-radius:50%;background:${u.online?'var(--green)':'var(--border)'};flex-shrink:0"></span>
+      ${unreadCounts['dm'+u.username] ? `<span class="unread-badge">${unreadCounts['dm'+u.username]}</span>` : ''}
+    </div>`).join('');
+}
+
+// ─── OPEN CHAT ───
+async function openGroup(id) {
+  const group = myGroups.find(g => g.id === id);
+  if (!group) return;
+  
+  // Unsubscribe old
+  if (activeChat?.subscription) activeChat.subscription.unsubscribe();
+  
+  activeChat = {type: 'group', id, name: group.name, icon: group.iconEmoji};
+  unreadCounts['g'+id] = 0;
+  
+  renderMainArea();
+  
+  // Subscribe to group topic
+  if (stompClient?.connected) {
+    activeChat.subscription = stompClient.subscribe('/topic/group/' + id, frame => {
+      const msg = JSON.parse(frame.body);
+      if (activeChat?.type === 'group' && activeChat?.id === id) {
+        appendMessage(msg);
+      } else {
+        unreadCounts['g'+id] = (unreadCounts['g'+id]||0) + 1;
+        renderSidebar();
+      }
+    });
+  }
+  
+  // Load history
+  try {
+    const history = await api('/api/groups/' + id + '/messages');
+    renderMessages(history);
+  } catch(e) {}
+  
+  renderSidebar();
+}
+
+async function openDm(username, displayName, avatarColor) {
+  if (activeChat?.subscription) activeChat.subscription.unsubscribe();
+  
+  dmPartners.add(username);
+  activeChat = {type: 'dm', target: username, name: displayName, avatarColor};
+  unreadCounts['dm'+username] = 0;
+  
+  renderMainArea();
+  renderSidebar();
+  
+  // DM messages come via /user/queue/dm so no extra subscription needed
+  
+  try {
+    const history = await api('/api/dm/' + username + '/messages');
+    renderMessages(history);
+  } catch(e) {}
+}
+
+// ─── RENDER MAIN AREA ───
+function renderMainArea() {
+  const main = document.getElementById('main-area');
+  if (!activeChat) {
+    main.innerHTML = `<div class="empty-state" id="welcome-state">
+      <div class="big-icon">💬</div><h3>Welcome to Nexus</h3>
+      <p>Pick a group or start a DM.<br/>Use <strong>@username</strong> to mention, <strong>@bot</strong> for AI.</p>
+    </div>`;
+    return;
+  }
+  
+  const isGroup = activeChat.type === 'group';
+  const group = isGroup ? myGroups.find(g => g.id === activeChat.id) : null;
+  const memberCount = group?.members?.length || 0;
+  
+  main.innerHTML = `
+    <div class="chat-header">
+      <span class="chat-header-icon">${isGroup ? (group?.iconEmoji||'💬') : '👤'}</span>
+      <div class="chat-header-info">
+        <div class="chat-header-name">${escHtml(activeChat.name)}</div>
+        <div class="chat-header-sub">${isGroup ? `${memberCount} member${memberCount!==1?'s':''}` : '@'+activeChat.target+' · Direct Message'}</div>
+      </div>
+      ${isGroup ? `<div class="chat-header-actions">
+        <button class="icon-btn" onclick="showAddMemberModal(${activeChat.id})" title="Add member">＋</button>
+      </div>` : ''}
+    </div>
+    <div class="messages" id="messages-container"></div>
+    <div class="typing-bar" id="typing-bar"></div>
+    <div class="input-area">
+      <div class="input-wrapper" id="input-wrapper">
+        <div class="autocomplete-list" id="autocomplete-list" style="display:none"></div>
+        <textarea id="message-input" rows="1" placeholder="Message ${isGroup ? '#'+activeChat.name : activeChat.name}… Use @username or @bot"
+          onkeydown="handleInputKey(event)" oninput="handleInputChange(event)"></textarea>
+        <div class="input-footer">
+          <span class="input-hint">↵ Send · Shift+↵ Newline · @username · @bot</span>
+          <button class="send-btn" onclick="sendMessage()">Send ↗</button>
+        </div>
+      </div>
+    </div>`;
+    
+  document.getElementById('message-input').focus();
+}
+
+// ─── MESSAGES ───
+function renderMessages(msgs) {
+  const container = document.getElementById('messages-container');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!msgs.length) {
+    container.innerHTML = `<div class="empty-state"><div class="big-icon">✨</div><p>No messages yet. Say hello!</p></div>`;
+    return;
+  }
+  let lastDate = null;
+  msgs.forEach(msg => {
+    const d = new Date(msg.timestamp).toDateString();
+    if (d !== lastDate) {
+      lastDate = d;
+      const div = document.createElement('div');
+      div.className = 'date-divider';
+      div.textContent = formatDate(msg.timestamp);
+      container.appendChild(div);
+    }
+    container.appendChild(buildMessageEl(msg));
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendMessage(msg) {
+  const container = document.getElementById('messages-container');
+  if (!container) return;
+  // Remove empty state if present
+  const emptyState = container.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+  container.appendChild(buildMessageEl(msg));
+  container.scrollTop = container.scrollHeight;
+}
+
+function buildMessageEl(msg) {
+  const div = document.createElement('div');
+  const isMention = msg.content.toLowerCase().includes('@' + me.username.toLowerCase());
+  div.className = 'msg-group' + (msg.botMessage ? ' bot-msg' : isMention ? ' mention' : '');
+  
+  const avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  avatarEl.style.background = msg.senderAvatarColor || '#6366f1';
+  avatarEl.textContent = initials(msg.senderDisplayName || msg.senderUsername);
+  
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+  body.innerHTML = `
+    <div class="msg-meta">
+      <span class="msg-author" style="color:${msg.senderAvatarColor||'var(--accent2)'}">${escHtml(msg.senderDisplayName || msg.senderUsername)}</span>
+      ${msg.botMessage ? '<span class="bot-label">🤖 BOT</span>' : ''}
+      <span class="msg-time">${formatTime(msg.timestamp)}</span>
+    </div>
+    <div class="msg-text">${formatContent(msg.content)}</div>`;
+  
+  div.appendChild(avatarEl);
+  div.appendChild(body);
+  return div;
+}
+
+function formatContent(text) {
+  return escHtml(text)
+    .replace(/@bot/gi, '<span class="bot-tag">@bot</span>')
+    .replace(/@([a-zA-Z0-9_]+)/g, '<span class="mention-tag">@$1</span>')
+    .replace(/\n/g, '<br/>');
+}
+
+// ─── SEND MESSAGE ───
+function sendMessage() {
+  const input = document.getElementById('message-input');
+  if (!input) return;
+  const content = input.value.trim();
+  if (!content || !activeChat || !stompClient?.connected) return;
+  
+  const payload = {content, type: activeChat.type.toUpperCase()};
+  if (activeChat.type === 'group') payload.groupId = activeChat.id;
+  else payload.dmTarget = activeChat.target;
+  
+  stompClient.send('/app/chat.send', {}, JSON.stringify(payload));
+  input.value = '';
+  input.style.height = '';
+  hideAutocomplete();
+}
+
+function handleInputKey(e) {
+  const list = document.getElementById('autocomplete-list');
+  const items = list?.querySelectorAll('.autocomplete-item') || [];
+  
+  if (list?.style.display !== 'none' && items.length) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); autocompleteIndex = Math.min(autocompleteIndex+1, items.length-1); highlightAutocomplete(items); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); autocompleteIndex = Math.max(autocompleteIndex-1, 0); highlightAutocomplete(items); return; }
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      if (autocompleteIndex >= 0 && items[autocompleteIndex]) {
+        e.preventDefault();
+        items[autocompleteIndex].click();
+        return;
+      }
+    }
+    if (e.key === 'Escape') { hideAutocomplete(); return; }
+  }
+  
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); return; }
+  
+  // Auto-grow textarea
+  const ta = e.target;
+  setTimeout(() => { ta.style.height = ''; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; }, 0);
+}
+
+function handleInputChange(e) {
+  const val = e.target.value;
+  const cursor = e.target.selectionStart;
+  const textBeforeCursor = val.substring(0, cursor);
+  const match = textBeforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+  
+  if (match) {
+    const query = match[1].toLowerCase();
+    let suggestions = allUsers.filter(u => 
+      u.username.toLowerCase().startsWith(query) || 
+      u.displayName.toLowerCase().startsWith(query)
+    );
+    // Add @bot option
+    if ('bot'.startsWith(query)) suggestions = [{username: 'bot', displayName: 'Nexus Bot', avatarColor: '#7c6af7', online: true}, ...suggestions];
+    
+    if (suggestions.length) {
+      showAutocomplete(suggestions, match[0], match.index, cursor, e.target);
+    } else {
+      hideAutocomplete();
+    }
+  } else {
+    hideAutocomplete();
+  }
+}
+
+function showAutocomplete(users, triggerText, startIdx, cursor, input) {
+  autocompleteIndex = -1;
+  const list = document.getElementById('autocomplete-list');
+  if (!list) return;
+  list.style.display = 'block';
+  list.innerHTML = users.slice(0, 8).map((u, i) => `
+    <div class="autocomplete-item" onclick="insertMention('${u.username}', ${startIdx}, ${cursor})">
+      <div class="avatar" style="background:${u.avatarColor};width:22px;height:22px;font-size:9px">${initials(u.displayName)}</div>
+      <span>${escHtml(u.displayName)}</span>
+      <span class="autocomplete-handle">@${u.username}</span>
+    </div>`).join('');
+}
+
+function insertMention(username, atStart, cursor) {
+  const input = document.getElementById('message-input');
+  const val = input.value;
+  const before = val.substring(0, atStart);
+  const after = val.substring(cursor);
+  input.value = before + '@' + username + ' ' + after;
+  input.focus();
+  const pos = before.length + username.length + 2;
+  input.setSelectionRange(pos, pos);
+  hideAutocomplete();
+}
+
+function hideAutocomplete() {
+  const list = document.getElementById('autocomplete-list');
+  if (list) list.style.display = 'none';
+  autocompleteIndex = -1;
+}
+
+function highlightAutocomplete(items) {
+  items.forEach((item, i) => item.classList.toggle('selected', i === autocompleteIndex));
+}
+
+// ─── WEBSOCKET ───
+function connectWebSocket() {
+  const socket = new SockJS('/ws');
+  stompClient = Stomp.over(socket);
+  stompClient.debug = null; // Silence logs
+  
+  stompClient.connect({}, frame => {
+    // DM queue
+    stompClient.subscribe('/user/queue/dm', frame => {
+      const msg = JSON.parse(frame.body);
+      const partner = msg.senderUsername === me.username ? msg.dmChannel?.replace('__'+me.username,'').replace(me.username+'__','') : msg.senderUsername;
+      dmPartners.add(msg.senderUsername === me.username ? activeChat?.target||'' : msg.senderUsername);
+      
+      if (activeChat?.type === 'dm' && (msg.dmChannel === buildDmChannel(me.username, activeChat.target))) {
+        appendMessage(msg);
+      } else {
+        const partner2 = msg.senderUsername !== me.username ? msg.senderUsername : activeChat?.target;
+        unreadCounts['dm'+(msg.senderUsername !== me.username ? msg.senderUsername : '')] = 
+          (unreadCounts['dm'+(msg.senderUsername !== me.username ? msg.senderUsername : '')]||0) + 1;
+        renderSidebar();
+        showToast(`📩 ${msg.senderDisplayName}: ${msg.content.substring(0,50)}…`);
+      }
+      renderSidebar();
+    });
+    
+    // Presence
+    stompClient.subscribe('/topic/presence', frame => {
+      const ev = JSON.parse(frame.body);
+      const u = allUsers.find(u => u.username === ev.username);
+      if (u) { u.online = ev.online; renderSidebar(); }
+    });
+    
+    // Re-subscribe to active group if any
+    if (activeChat?.type === 'group') {
+      activeChat.subscription = stompClient.subscribe('/topic/group/' + activeChat.id, frame => {
+        appendMessage(JSON.parse(frame.body));
+      });
+    }
+    
+    // Announce presence
+    stompClient.send('/app/presence', {}, JSON.stringify({username: me.username, online: true, displayName: me.displayName, avatarColor: me.avatarColor}));
+    
+  }, err => { console.error('WebSocket error', err); });
+}
+
+function buildDmChannel(u1, u2) {
+  return [u1, u2].sort().join('__');
+}
+
+// ─── MODALS ───
+function showCreateGroupModal() {
+  loadUsers().then(() => {
+    const list = document.getElementById('member-checklist');
+    list.innerHTML = allUsers.map(u => `
+      <label class="user-check-item">
+        <input type="checkbox" value="${u.username}"/>
+        <div class="avatar" style="background:${u.avatarColor};width:24px;height:24px;font-size:10px">${initials(u.displayName)}</div>
+        <span style="font-size:13px">${escHtml(u.displayName)}</span>
+        <span style="color:var(--text3);font-size:11px;font-family:'Space Mono',monospace">@${u.username}</span>
+      </label>`).join('');
+  });
+  document.getElementById('modal-create-group').classList.add('show');
+}
+
+async function submitCreateGroup() {
+  const name = document.getElementById('new-group-name').value.trim();
+  if (!name) { showToast('Group name required', 'error'); return; }
+  const desc = document.getElementById('new-group-desc').value.trim();
+  const checked = [...document.querySelectorAll('#member-checklist input:checked')].map(i => i.value);
+  
+  try {
+    const group = await api('/api/groups', 'POST', {name, description: desc, iconEmoji: selectedEmoji, memberUsernames: checked});
+    myGroups.push(group);
+    hideModal('modal-create-group');
+    renderSidebar();
+    openGroup(group.id);
+    showToast('Group created!', 'success');
+    document.getElementById('new-group-name').value = '';
+    document.getElementById('new-group-desc').value = '';
+  } catch(e) { showToast('Failed to create group', 'error'); }
+}
+
+function showAddMemberModal(groupId) {
+  addMemberGroupId = groupId;
+  const group = myGroups.find(g => g.id === groupId);
+  const existingMembers = new Set(group?.memberUsernames || []);
+  
+  const list = document.getElementById('add-member-list');
+  const nonMembers = allUsers.filter(u => !existingMembers.has(u.username));
+  
+  list.innerHTML = nonMembers.length ? nonMembers.map(u => `
+    <div class="user-check-item" onclick="addMemberNow('${u.username}')">
+      <div class="avatar" style="background:${u.avatarColor};width:24px;height:24px;font-size:10px">${initials(u.displayName)}</div>
+      <span style="font-size:13px">${escHtml(u.displayName)}</span>
+      <span style="color:var(--text3);font-size:11px;font-family:'Space Mono',monospace">@${u.username}</span>
+      <button class="btn-sm" style="margin-left:auto">Add</button>
+    </div>`).join('') : '<div style="padding:12px;color:var(--text3);font-size:13px">All users are already members</div>';
+  
+  document.getElementById('modal-add-member').classList.add('show');
+}
+
+async function addMemberNow(username) {
+  try {
+    const updated = await api('/api/groups/' + addMemberGroupId + '/members', 'POST', {username});
+    const idx = myGroups.findIndex(g => g.id === addMemberGroupId);
+    if (idx !== -1) myGroups[idx] = updated;
+    showToast(`@${username} added!`, 'success');
+    hideModal('modal-add-member');
+    renderSidebar();
+    // Refresh header
+    if (activeChat?.type === 'group' && activeChat?.id === addMemberGroupId) renderMainArea();
+  } catch(e) { showToast('Failed to add member', 'error'); }
+}
+
+function selectEmoji(el) {
+  document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedEmoji = el.dataset.emoji;
+}
+
+function hideModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('show'); });
+});
+
+// ─── UTILS ───
+async function api(path, method='GET', body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
+  if (body !== null) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  if (!res.ok) throw new Error(res.status);
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+function initials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+}
+
+function showToast(msg, type='') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Enter on auth inputs
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.getElementById('tab-login').style.display !== 'none' && 
+        (e.target.id === 'login-username' || e.target.id === 'login-password')) doLogin();
+    if (document.getElementById('tab-register').style.display !== 'none' &&
+        (e.target.id === 'reg-username' || e.target.id === 'reg-password' || e.target.id === 'reg-display')) doRegister();
+  }
+});
+
+// Check existing session on load
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await api('/api/auth/me');
+    if (res?.success) { me = res; initApp(); }
+  } catch(e) { /* not logged in */ }
+});
+</script>
+</body>
+</html>
