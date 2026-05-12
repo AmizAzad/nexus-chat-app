@@ -7,14 +7,21 @@ import com.chatapp.model.User;
 import com.chatapp.repository.GroupRepository;
 import com.chatapp.repository.MessageRepository;
 import com.chatapp.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class ChatService {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
+    private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
     private final UserRepository userRepo;
     private final GroupRepository groupRepo;
@@ -42,8 +49,10 @@ public class ChatService {
         r.senderUsername = m.getSender().getUsername();
         r.senderDisplayName = m.getSender().getDisplayName();
         r.senderAvatarColor = m.getSender().getAvatarColor();
+        r.senderProfilePicture = m.getSender().getProfilePicture();
         r.botMessage = m.isBotMessage();
         r.timestamp = m.getTimestamp();
+        r.expiresAt = m.getExpiresAt();
         if (m.getGroup() != null) {
             r.type = "GROUP";
             r.groupId = m.getGroup().getId();
@@ -51,11 +60,26 @@ public class ChatService {
             r.type = "DM";
             r.dmChannel = m.getDmChannel();
         }
+        // File attachment
+        if (m.hasFile()) {
+            r.fileName = m.getFileName();
+            r.fileType = m.getFileType();
+            r.fileSize = m.getFileSize();
+            r.fileData = m.getFileData();
+        }
         return r;
     }
 
     public UserDTO toUserDTO(User u) {
-        return new UserDTO(u.getId(), u.getUsername(), u.getDisplayName(), u.getAvatarColor(), u.isOnline());
+        UserDTO dto = new UserDTO(u.getId(), u.getUsername(), u.getDisplayName(), u.getAvatarColor(), u.isOnline());
+        dto.profilePicture = u.getProfilePicture();
+        dto.nickname = u.getNickname();
+        dto.email = u.getEmail();
+        dto.phone = u.getPhone();
+        dto.linkedinUrl = u.getLinkedinUrl();
+        dto.address = u.getAddress();
+        dto.profileComplete = u.isProfileComplete();
+        return dto;
     }
 
     public GroupDTO toGroupDTO(Group g) {
@@ -98,14 +122,14 @@ public class ChatService {
     @Transactional
     public List<ChatMessageResponse> getGroupHistory(Long groupId) {
         Group group = groupRepo.findById(groupId).orElseThrow();
-        return messageRepo.findByGroupOrderByTimestampAsc(group)
+        return messageRepo.findActiveByGroup(group, LocalDateTime.now())
             .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional
     public List<ChatMessageResponse> getDmHistory(String user1, String user2) {
         String channel = buildDmChannel(user1, user2);
-        return messageRepo.findByDmChannelOrderByTimestampAsc(channel)
+        return messageRepo.findActiveByDmChannel(channel, LocalDateTime.now())
             .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -132,10 +156,38 @@ public class ChatService {
     }
 
     @Transactional
+    public Message saveGroupMessageWithFile(String senderUsername, Long groupId, ChatMessagePayload payload) {
+        User sender = userRepo.findByUsername(senderUsername).orElseThrow();
+        Group group = groupRepo.findById(groupId).orElseThrow();
+        Message msg = new Message(payload.content != null ? payload.content : "", sender, group, null);
+        if (payload.fileName != null && !payload.fileName.isBlank()) {
+            msg.setFileName(payload.fileName);
+            msg.setFileType(payload.fileType);
+            msg.setFileSize(payload.fileSize);
+            msg.setFileData(payload.fileData);
+        }
+        return messageRepo.save(msg);
+    }
+
+    @Transactional
     public Message saveDmMessage(String senderUsername, String targetUsername, String content) {
         User sender = userRepo.findByUsername(senderUsername).orElseThrow();
         String channel = buildDmChannel(senderUsername, targetUsername);
         Message msg = new Message(content, sender, null, channel);
+        return messageRepo.save(msg);
+    }
+
+    @Transactional
+    public Message saveDmMessageWithFile(String senderUsername, String targetUsername, ChatMessagePayload payload) {
+        User sender = userRepo.findByUsername(senderUsername).orElseThrow();
+        String channel = buildDmChannel(senderUsername, targetUsername);
+        Message msg = new Message(payload.content != null ? payload.content : "", sender, null, channel);
+        if (payload.fileName != null && !payload.fileName.isBlank()) {
+            msg.setFileName(payload.fileName);
+            msg.setFileType(payload.fileType);
+            msg.setFileSize(payload.fileSize);
+            msg.setFileData(payload.fileData);
+        }
         return messageRepo.save(msg);
     }
 
@@ -156,13 +208,47 @@ public class ChatService {
         return claudeService.askBot(prompt);
     }
 
-    // Extract @bot prompt from message
     public String extractBotPrompt(String content) {
-        // Remove @bot tag and trim
         return content.replaceAll("(?i)@bot", "").trim();
     }
 
     public boolean containsBotMention(String content) {
-        return content.toLowerCase().contains("@bot");
+        return content != null && content.toLowerCase().contains("@bot");
+    }
+
+    public boolean isValidFileSize(long fileSize) {
+        return fileSize > 0 && fileSize <= MAX_FILE_SIZE;
+    }
+
+    // Profile management
+    @Transactional
+    public UserDTO updateProfile(String username, ProfileUpdateRequest req) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        if (req.displayName != null && !req.displayName.isBlank()) user.setDisplayName(req.displayName);
+        if (req.nickname != null) user.setNickname(req.nickname);
+        if (req.email != null) user.setEmail(req.email);
+        if (req.phone != null) user.setPhone(req.phone);
+        if (req.linkedinUrl != null) user.setLinkedinUrl(req.linkedinUrl);
+        if (req.address != null) user.setAddress(req.address);
+        if (req.profilePicture != null) user.setProfilePicture(req.profilePicture);
+        user.setProfileComplete(true);
+        userRepo.save(user);
+        return toUserDTO(user);
+    }
+
+    @Transactional
+    public UserDTO getProfile(String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        return toUserDTO(user);
+    }
+
+    // TTL cleanup - runs every minute
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void cleanupExpiredMessages() {
+        int deleted = messageRepo.deleteExpiredMessages(LocalDateTime.now());
+        if (deleted > 0) {
+            log.info("Cleaned up {} expired messages", deleted);
+        }
     }
 }

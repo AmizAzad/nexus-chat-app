@@ -56,4 +56,20 @@ public class ChatRestController {
             @PathVariable String targetUsername, Authentication auth) {
         return ResponseEntity.ok(chatService.getDmHistory(auth.getName(), targetUsername));
     }
+
+    // Profile endpoints
+    @GetMapping("/profile/{username}")
+    public ResponseEntity<UserDTO> getProfile(@PathVariable String username) {
+        return ResponseEntity.ok(chatService.getProfile(username));
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<UserDTO> updateProfile(@RequestBody ProfileUpdateRequest req, Authentication auth) {
+        return ResponseEntity.ok(chatService.updateProfile(auth.getName(), req));
+    }
+
+    @GetMapping("/profile/me")
+    public ResponseEntity<UserDTO> getMyProfile(Authentication auth) {
+        return ResponseEntity.ok(chatService.getProfile(auth.getName()));
+    }
 }

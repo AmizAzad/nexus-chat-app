@@ -25,6 +25,26 @@ public class WebSocketController {
     public void sendMessage(@Payload ChatMessagePayload payload, Principal principal) {
         String senderUsername = principal.getName();
 
+        // Validate file size if file is attached
+        if (payload.fileName != null && !payload.fileName.isBlank()) {
+            if (!chatService.isValidFileSize(payload.fileSize)) {
+                // Send error back to sender
+                ChatMessageResponse error = new ChatMessageResponse();
+                error.content = "⚠️ File size must be less than 2 MB.";
+                error.senderUsername = "system";
+                error.senderDisplayName = "System";
+                error.senderAvatarColor = "#ef4444";
+                error.botMessage = true;
+                error.type = payload.type;
+                if ("GROUP".equals(payload.type)) {
+                    messagingTemplate.convertAndSend("/topic/group/" + payload.groupId, error);
+                } else {
+                    messagingTemplate.convertAndSendToUser(senderUsername, "/queue/dm", error);
+                }
+                return;
+            }
+        }
+
         if ("GROUP".equals(payload.type)) {
             handleGroupMessage(senderUsername, payload);
         } else if ("DM".equals(payload.type)) {
@@ -33,14 +53,15 @@ public class WebSocketController {
     }
 
     private void handleGroupMessage(String senderUsername, ChatMessagePayload payload) {
-        // Save user message
-        Message saved = chatService.saveGroupMessage(senderUsername, payload.groupId, payload.content);
+        Message saved;
+        if (payload.fileName != null && !payload.fileName.isBlank()) {
+            saved = chatService.saveGroupMessageWithFile(senderUsername, payload.groupId, payload);
+        } else {
+            saved = chatService.saveGroupMessage(senderUsername, payload.groupId, payload.content);
+        }
         ChatMessageResponse response = chatService.toResponse(saved);
-
-        // Broadcast to group topic
         messagingTemplate.convertAndSend("/topic/group/" + payload.groupId, response);
 
-        // Check for @bot
         if (chatService.containsBotMention(payload.content)) {
             String prompt = chatService.extractBotPrompt(payload.content);
             new Thread(() -> {
@@ -55,19 +76,20 @@ public class WebSocketController {
     private void handleDmMessage(String senderUsername, ChatMessagePayload payload) {
         String targetUsername = payload.dmTarget;
 
-        // Save user DM
-        Message saved = chatService.saveDmMessage(senderUsername, targetUsername, payload.content);
+        Message saved;
+        if (payload.fileName != null && !payload.fileName.isBlank()) {
+            saved = chatService.saveDmMessageWithFile(senderUsername, targetUsername, payload);
+        } else {
+            saved = chatService.saveDmMessage(senderUsername, targetUsername, payload.content);
+        }
         ChatMessageResponse response = chatService.toResponse(saved);
 
-        String dmChannel = chatService.buildDmChannel(senderUsername, targetUsername);
-
-        // Send to both participants
         messagingTemplate.convertAndSendToUser(senderUsername, "/queue/dm", response);
         messagingTemplate.convertAndSendToUser(targetUsername, "/queue/dm", response);
 
-        // Check for @bot
         if (chatService.containsBotMention(payload.content)) {
             String prompt = chatService.extractBotPrompt(payload.content);
+            String dmChannel = chatService.buildDmChannel(senderUsername, targetUsername);
             new Thread(() -> {
                 String botReply = chatService.getBotReply(prompt);
                 Message botMsg = chatService.saveBotMessage(senderUsername, null, dmChannel, botReply);

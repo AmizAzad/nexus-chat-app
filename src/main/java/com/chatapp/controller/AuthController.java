@@ -3,6 +3,7 @@ package com.chatapp.controller;
 import com.chatapp.dto.ChatDTOs.*;
 import com.chatapp.model.User;
 import com.chatapp.repository.UserRepository;
+import com.chatapp.service.ChatService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,6 +22,7 @@ public class AuthController {
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authManager;
+    private final ChatService chatService;
 
     private static final List<String> AVATAR_COLORS = List.of(
         "#ef4444", "#f97316", "#eab308", "#22c55e",
@@ -29,10 +31,11 @@ public class AuthController {
     );
 
     public AuthController(UserRepository userRepo, PasswordEncoder passwordEncoder,
-                          AuthenticationManager authManager) {
+                          AuthenticationManager authManager, ChatService chatService) {
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
         this.authManager = authManager;
+        this.chatService = chatService;
     }
 
     @PostMapping("/register")
@@ -51,6 +54,17 @@ public class AuthController {
             req.displayName != null && !req.displayName.isBlank() ? req.displayName : req.username,
             color
         );
+        // Set profile fields from registration
+        if (req.nickname != null) user.setNickname(req.nickname);
+        if (req.email != null) user.setEmail(req.email);
+        if (req.phone != null) user.setPhone(req.phone);
+        if (req.linkedinUrl != null) user.setLinkedinUrl(req.linkedinUrl);
+        if (req.address != null) user.setAddress(req.address);
+        if (req.profilePicture != null) user.setProfilePicture(req.profilePicture);
+        // Mark profile complete if email was provided (required field)
+        if (req.email != null && !req.email.isBlank()) {
+            user.setProfileComplete(true);
+        }
         userRepo.save(user);
 
         LoginResponse res = new LoginResponse();
@@ -77,6 +91,8 @@ public class AuthController {
             res.username = user.getUsername();
             res.displayName = user.getDisplayName();
             res.avatarColor = user.getAvatarColor();
+            res.profileComplete = user.isProfileComplete();
+            res.profilePicture = user.getProfilePicture();
             return ResponseEntity.ok(res);
         } catch (Exception e) {
             res.success = false;
@@ -106,6 +122,8 @@ public class AuthController {
         res.username = user.getUsername();
         res.displayName = user.getDisplayName();
         res.avatarColor = user.getAvatarColor();
+        res.profileComplete = user.isProfileComplete();
+        res.profilePicture = user.getProfilePicture();
         return ResponseEntity.ok(res);
     }
 }

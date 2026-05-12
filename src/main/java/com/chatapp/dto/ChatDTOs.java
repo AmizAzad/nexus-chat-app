@@ -10,7 +10,12 @@ public class ChatDTOs {
         public String content;
         public String type; // "GROUP" or "DM"
         public Long groupId;
-        public String dmTarget; // username of DM recipient
+        public String dmTarget;
+        // File attachment
+        public String fileName;
+        public String fileType;
+        public long fileSize;
+        public String fileData; // Base64
     }
 
     public static class ChatMessageResponse {
@@ -19,11 +24,18 @@ public class ChatDTOs {
         public String senderUsername;
         public String senderDisplayName;
         public String senderAvatarColor;
+        public String senderProfilePicture;
         public String type;
         public Long groupId;
         public String dmChannel;
         public LocalDateTime timestamp;
+        public LocalDateTime expiresAt;
         public boolean botMessage;
+        // File attachment
+        public String fileName;
+        public String fileType;
+        public long fileSize;
+        public String fileData;
 
         public ChatMessageResponse() {}
     }
@@ -34,6 +46,13 @@ public class ChatDTOs {
         public String displayName;
         public String avatarColor;
         public boolean online;
+        public String profilePicture;
+        public String nickname;
+        public String email;
+        public String phone;
+        public String linkedinUrl;
+        public String address;
+        public boolean profileComplete;
 
         public UserDTO() {}
         public UserDTO(Long id, String username, String displayName, String avatarColor, boolean online) {
@@ -72,6 +91,13 @@ public class ChatDTOs {
         public String username;
         public String password;
         public String displayName;
+        // Profile fields for first-time setup
+        public String nickname;
+        public String email;
+        public String phone;
+        public String linkedinUrl;
+        public String address;
+        public String profilePicture;
     }
 
     public static class LoginRequest {
@@ -86,6 +112,8 @@ public class ChatDTOs {
         public String token;
         public boolean success;
         public String message;
+        public boolean profileComplete;
+        public String profilePicture;
 
         public LoginResponse() {}
     }
@@ -103,5 +131,15 @@ public class ChatDTOs {
             this.displayName = displayName;
             this.avatarColor = avatarColor;
         }
+    }
+
+    public static class ProfileUpdateRequest {
+        public String displayName;
+        public String nickname;
+        public String email;
+        public String phone;
+        public String linkedinUrl;
+        public String address;
+        public String profilePicture;
     }
 }

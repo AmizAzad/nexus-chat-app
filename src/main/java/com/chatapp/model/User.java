@@ -25,6 +25,16 @@ public class User {
     private boolean online = false;
     private LocalDateTime lastSeen;
 
+    // Profile fields
+    private String nickname;
+    private String email;
+    private String phone;
+    private String linkedinUrl;
+    private String address;
+    @Column(columnDefinition = "TEXT")
+    private String profilePicture; // Base64 encoded image
+    private boolean profileComplete = false;
+
     @ManyToMany(mappedBy = "members")
     private Set<Group> groups = new HashSet<>();
 
@@ -52,4 +62,19 @@ public class User {
     public LocalDateTime getLastSeen() { return lastSeen; }
     public void setLastSeen(LocalDateTime lastSeen) { this.lastSeen = lastSeen; }
     public Set<Group> getGroups() { return groups; }
+
+    public String getNickname() { return nickname; }
+    public void setNickname(String nickname) { this.nickname = nickname; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getLinkedinUrl() { return linkedinUrl; }
+    public void setLinkedinUrl(String linkedinUrl) { this.linkedinUrl = linkedinUrl; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
+    public boolean isProfileComplete() { return profileComplete; }
+    public void setProfileComplete(boolean profileComplete) { this.profileComplete = profileComplete; }
 }

@@ -10,23 +10,29 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @ManyToOne
     @JoinColumn(name = "sender_id")
     private User sender;
 
-    // For group messages
     @ManyToOne
     @JoinColumn(name = "group_id")
     private Group group;
 
-    // For DMs: store the two participants as sorted usernames
-    private String dmChannel; // e.g. "alice_bob" (alphabetically sorted)
+    private String dmChannel;
 
     private LocalDateTime timestamp;
+    private LocalDateTime expiresAt;
     private boolean botMessage = false;
+
+    // File attachment fields
+    private String fileName;
+    private String fileType; // MIME type
+    private long fileSize; // bytes
+    @Column(columnDefinition = "TEXT")
+    private String fileData; // Base64 encoded file content
 
     public Message() {}
 
@@ -36,6 +42,7 @@ public class Message {
         this.group = group;
         this.dmChannel = dmChannel;
         this.timestamp = LocalDateTime.now();
+        this.expiresAt = this.timestamp.plusMinutes(30);
     }
 
     public Long getId() { return id; }
@@ -49,6 +56,19 @@ public class Message {
     public void setDmChannel(String dmChannel) { this.dmChannel = dmChannel; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
     public boolean isBotMessage() { return botMessage; }
     public void setBotMessage(boolean botMessage) { this.botMessage = botMessage; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFileType() { return fileType; }
+    public void setFileType(String fileType) { this.fileType = fileType; }
+    public long getFileSize() { return fileSize; }
+    public void setFileSize(long fileSize) { this.fileSize = fileSize; }
+    public String getFileData() { return fileData; }
+    public void setFileData(String fileData) { this.fileData = fileData; }
+
+    public boolean hasFile() { return fileName != null && !fileName.isBlank(); }
 }
