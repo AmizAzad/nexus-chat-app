@@ -1,0 +1,67 @@
+/* ═══════════════════════════════════════════
+   Nexus Chat — Responsive / Mobile
+   ═══════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  #app.show {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: -290px;
+    width: 280px;
+    height: 100vh;
+    z-index: 100;
+    transition: left var(--transition-slow);
+    box-shadow: none;
+  }
+  .sidebar.open {
+    left: 0;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+
+  .mobile-menu-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Tap outside to close sidebar */
+  .sidebar.open ~ .main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 50;
+  }
+
+  .chat-header {
+    padding-left: 56px; /* room for hamburger */
+  }
+
+  .input-footer__hint { display: none; }
+
+  .modal {
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+  }
+
+  .auth-card {
+    padding: var(--space-6);
+    margin: var(--space-4);
+    width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-header__actions .btn-icon:not(:first-child):not(:last-child) {
+    display: none;
+  }
+
+  .msg { padding: 5px var(--space-3); }
+  .msg__actions { right: var(--space-3); }
+
+  .input-area { padding: var(--space-2) var(--space-3) var(--space-3); }
+}
+

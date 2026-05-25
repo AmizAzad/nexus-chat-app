@@ -38,7 +38,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/ws/**", "/", "/index.html",
-                                 "/static/**", "/*.js", "/*.css", "/*.ico",
+                                 "/static/**", "/css/**", "/js/**",
+                                 "/*.js", "/*.css", "/*.ico",
                                  "/h2-console/**", "/api/invite/**").permitAll()
                 .anyRequest().authenticated()
             )
