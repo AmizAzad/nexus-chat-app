@@ -24,6 +24,12 @@ public class Group {
 
     private LocalDateTime createdAt;
 
+    // Privacy
+    private boolean privateGroup = true;
+
+    // Configurable TTL in minutes (null = default 30, 0 = never expire)
+    private Integer messageTtlMinutes;
+
     @ManyToMany
     @JoinTable(
         name = "group_members",
@@ -31,6 +37,15 @@ public class Group {
         inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     private Set<User> members = new HashSet<>();
+
+    // Admin members
+    @ManyToMany
+    @JoinTable(
+        name = "group_admins",
+        joinColumns = @JoinColumn(name = "group_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> admins = new HashSet<>();
 
     public Group() {}
 
@@ -53,4 +68,17 @@ public class Group {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public Set<User> getMembers() { return members; }
     public void setMembers(Set<User> members) { this.members = members; }
+
+    public boolean isPrivateGroup() { return privateGroup; }
+    public void setPrivateGroup(boolean privateGroup) { this.privateGroup = privateGroup; }
+
+    public Integer getMessageTtlMinutes() { return messageTtlMinutes; }
+    public void setMessageTtlMinutes(Integer messageTtlMinutes) { this.messageTtlMinutes = messageTtlMinutes; }
+
+    public Set<User> getAdmins() { return admins; }
+    public void setAdmins(Set<User> admins) { this.admins = admins; }
+
+    public boolean isAdmin(User user) {
+        return createdBy.getId().equals(user.getId()) || admins.stream().anyMatch(a -> a.getId().equals(user.getId()));
+    }
 }

@@ -34,6 +34,24 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String fileData; // Base64 encoded file content
 
+    // Reply support
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_id")
+    private Message replyTo;
+
+    // Edit/Delete support
+    private boolean edited = false;
+    private LocalDateTime editedAt;
+    private boolean deleted = false;
+    private LocalDateTime deletedAt;
+
+    // Pinned
+    private boolean pinned = false;
+    private LocalDateTime pinnedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pinned_by_id")
+    private User pinnedBy;
+
     public Message() {}
 
     public Message(String content, User sender, Group group, String dmChannel) {
@@ -42,7 +60,15 @@ public class Message {
         this.group = group;
         this.dmChannel = dmChannel;
         this.timestamp = LocalDateTime.now();
-        this.expiresAt = this.timestamp.plusMinutes(30);
+        // Use group's custom TTL if available, otherwise default 30 min
+        if (group != null && group.getMessageTtlMinutes() != null) {
+            if (group.getMessageTtlMinutes() > 0) {
+                this.expiresAt = this.timestamp.plusMinutes(group.getMessageTtlMinutes());
+            }
+            // ttl=0 means never expire, expiresAt stays null
+        } else {
+            this.expiresAt = this.timestamp.plusMinutes(30);
+        }
     }
 
     public Long getId() { return id; }
@@ -71,4 +97,23 @@ public class Message {
     public void setFileData(String fileData) { this.fileData = fileData; }
 
     public boolean hasFile() { return fileName != null && !fileName.isBlank(); }
+
+    public Message getReplyTo() { return replyTo; }
+    public void setReplyTo(Message replyTo) { this.replyTo = replyTo; }
+
+    public boolean isEdited() { return edited; }
+    public void setEdited(boolean edited) { this.edited = edited; }
+    public LocalDateTime getEditedAt() { return editedAt; }
+    public void setEditedAt(LocalDateTime editedAt) { this.editedAt = editedAt; }
+    public boolean isDeleted() { return deleted; }
+    public void setDeleted(boolean deleted) { this.deleted = deleted; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public boolean isPinned() { return pinned; }
+    public void setPinned(boolean pinned) { this.pinned = pinned; }
+    public LocalDateTime getPinnedAt() { return pinnedAt; }
+    public void setPinnedAt(LocalDateTime pinnedAt) { this.pinnedAt = pinnedAt; }
+    public User getPinnedBy() { return pinnedBy; }
+    public void setPinnedBy(User pinnedBy) { this.pinnedBy = pinnedBy; }
 }

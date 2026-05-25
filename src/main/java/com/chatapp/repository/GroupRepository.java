@@ -10,4 +10,7 @@ import java.util.List;
 public interface GroupRepository extends JpaRepository<Group, Long> {
     @Query("SELECT g FROM Group g JOIN g.members m WHERE m = :user")
     List<Group> findByMember(@Param("user") User user);
+
+    @Query("SELECT g FROM Group g WHERE g.privateGroup = false")
+    List<Group> findPublicGroups();
 }

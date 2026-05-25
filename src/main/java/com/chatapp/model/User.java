@@ -32,8 +32,15 @@ public class User {
     private String linkedinUrl;
     private String address;
     @Column(columnDefinition = "TEXT")
-    private String profilePicture; // Base64 encoded image
+    private String profilePicture;
     private boolean profileComplete = false;
+
+    // Status
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    private String statusMessage;
 
     @ManyToMany(mappedBy = "members")
     private Set<Group> groups = new HashSet<>();
@@ -77,4 +84,9 @@ public class User {
     public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
     public boolean isProfileComplete() { return profileComplete; }
     public void setProfileComplete(boolean profileComplete) { this.profileComplete = profileComplete; }
+
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
+    public String getStatusMessage() { return statusMessage; }
+    public void setStatusMessage(String statusMessage) { this.statusMessage = statusMessage; }
 }
