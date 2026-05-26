@@ -1,49 +1,50 @@
 /* ═══════════════════════════════════════════
    Nexus Chat — Design Tokens & Base Reset
+   (Reddit-inspired light theme)
    ═══════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 :root {
-  /* Surface colors */
-  --bg-primary:    #0a0a0c;
-  --bg-secondary:  #111114;
-  --bg-tertiary:   #18181c;
-  --bg-elevated:   #1f1f25;
-  --bg-hover:      #26262e;
-  --bg-active:     rgba(99, 102, 241, 0.12);
+  /* Surface colors — warm light palette */
+  --bg-primary:    #DAE0E6;
+  --bg-secondary:  #FFFFFF;
+  --bg-tertiary:   #F6F7F8;
+  --bg-elevated:   #FFFFFF;
+  --bg-hover:      #F0F1F2;
+  --bg-active:     rgba(255, 86, 0, 0.08);
 
   /* Border */
-  --border:        #27272f;
-  --border-light:  #32323c;
-  --border-focus:  #6366f1;
+  --border:        #EDEFF1;
+  --border-light:  #E0E2E4;
+  --border-focus:  #FF4500;
 
   /* Text */
-  --text-primary:   #f0f0f5;
-  --text-secondary: #8b8ba0;
-  --text-tertiary:  #555568;
-  --text-inverse:   #ffffff;
+  --text-primary:   #1C1C1C;
+  --text-secondary: #576F76;
+  --text-tertiary:  #878A8C;
+  --text-inverse:   #FFFFFF;
 
-  /* Accent */
-  --accent:         #6366f1;
-  --accent-hover:   #818cf8;
-  --accent-subtle:  rgba(99, 102, 241, 0.15);
-  --accent-glow:    rgba(99, 102, 241, 0.08);
+  /* Accent — Reddit orange */
+  --accent:         #FF4500;
+  --accent-hover:   #FF5722;
+  --accent-subtle:  rgba(255, 69, 0, 0.10);
+  --accent-glow:    rgba(255, 69, 0, 0.06);
 
   /* Semantic */
-  --success:        #22c55e;
-  --success-subtle: rgba(34, 197, 94, 0.15);
-  --warning:        #f59e0b;
-  --warning-subtle: rgba(245, 158, 11, 0.12);
-  --danger:         #ef4444;
-  --danger-subtle:  rgba(239, 68, 68, 0.12);
-  --info:           #3b82f6;
+  --success:        #46D160;
+  --success-subtle: rgba(70, 209, 96, 0.12);
+  --warning:        #FFB000;
+  --warning-subtle: rgba(255, 176, 0, 0.10);
+  --danger:         #EA0027;
+  --danger-subtle:  rgba(234, 0, 39, 0.08);
+  --info:           #0079D3;
 
   /* Special */
-  --mention-bg:     rgba(245, 158, 11, 0.08);
-  --mention-border: #f59e0b;
-  --bot-bg:         rgba(99, 102, 241, 0.06);
-  --bot-border:     #6366f1;
+  --mention-bg:     rgba(255, 176, 0, 0.08);
+  --mention-border: #FFB000;
+  --bot-bg:         rgba(0, 121, 211, 0.06);
+  --bot-border:     #0079D3;
 
   /* Radius */
   --radius-xs:  4px;
@@ -54,10 +55,10 @@
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.06);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.14);
+  --shadow-glow: 0 0 40px rgba(255, 69, 0, 0.04);
 
   /* Spacing scale */
   --space-1: 4px;
@@ -70,11 +71,11 @@
   --space-10: 40px;
 
   /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Sidebar width */
-  --sidebar-width: 272px;
+  --sidebar-width: 280px;
 
   /* Transitions */
   --transition-fast: 0.12s ease;
@@ -101,14 +102,14 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a { color: var(--accent-hover); text-decoration: none; }
+a { color: var(--info); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ── Scrollbars ───────────────────────── */
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+::-webkit-scrollbar-thumb { background: #CCC; border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: #AAA; }
 
 /* ── Focus visible ────────────────────── */
 :focus-visible {
@@ -141,4 +142,3 @@ a:hover { text-decoration: underline; }
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
-
