@@ -53,7 +53,7 @@
       <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>
     </div>
 
-    <!-- Register -->
+    <!-- Register Step 1: Credentials -->
     <div id="tab-register" style="display:none">
       <div class="form-group">
         <label class="form-label">Username *</label>
@@ -63,18 +63,23 @@
         <label class="form-label">Password *</label>
         <input class="form-input" id="reg-password" type="password" placeholder="Minimum 6 characters"/>
       </div>
+      <button class="btn btn-primary btn-full" onclick="goToProfileStep()">Continue →</button>
+    </div>
 
-      <div class="divider">Profile Info</div>
-
+    <!-- Register Step 2: Profile Details -->
+    <div id="tab-register-profile" style="display:none">
+      <button class="btn btn-ghost" onclick="switchTab('register')" style="margin-bottom:12px;padding:0;font-size:12px">← Back</button>
+      <div class="divider">Profile Details</div>
       <div class="pic-upload">
-        <div class="pic-preview" id="reg-pic-preview" onclick="document.getElementById('reg-pic-input').click()">📷</div>
+        <div class="pic-preview" id="reg-pic-preview" onclick="document.getElementById('reg-pic-input').click()">
+          <span class="pic-preview__icon">📷</span>
+        </div>
         <input type="file" id="reg-pic-input" accept="image/*" style="display:none" onchange="previewRegPic(this)"/>
         <div>
           <div class="form-label" style="margin-bottom:2px">Profile Picture</div>
           <div class="form-hint">Click to upload (max 2MB)</div>
         </div>
       </div>
-
       <div class="form-group">
         <label class="form-label">Display Name *</label>
         <input class="form-input" id="reg-display" type="text" placeholder="Your Full Name"/>
@@ -124,7 +129,7 @@
     <h2>👋 Complete Your Profile</h2>
     <p style="color:var(--text-tertiary);font-size:13px;margin-bottom:20px">Add details so others can get to know you.</p>
     <div class="pic-upload">
-      <div class="pic-preview" id="setup-pic-preview" onclick="document.getElementById('setup-pic-input').click()">📷</div>
+      <div class="pic-preview" id="setup-pic-preview" onclick="document.getElementById('setup-pic-input').click()"><span class="pic-preview__icon">📷</span></div>
       <input type="file" id="setup-pic-input" accept="image/*" style="display:none" onchange="previewSetupPic(this)"/>
       <div><div class="form-label" style="margin-bottom:2px">Profile Picture</div><div class="form-hint">Click to upload</div></div>
     </div>
@@ -150,6 +155,7 @@
       <span class="sidebar__logo">NEXUS</span>
       <div class="sidebar__actions">
         <button class="btn-icon" onclick="showSearchModal()" title="Search messages">🔍</button>
+        <button class="btn-icon" onclick="showThemeModal()" title="Change theme">🎨</button>
         <button class="btn-icon" onclick="showCreateGroupModal()" title="New group">＋</button>
       </div>
     </div>
@@ -162,10 +168,6 @@
         <div class="me-info__status" id="me-status-text"></div>
       </div>
       <button class="sidebar__logout" onclick="event.stopPropagation();doLogout()">Sign out</button>
-    </div>
-
-    <div class="sidebar__search">
-      <input class="sidebar__search-input" id="sidebar-search" placeholder="Search messages…" onkeyup="handleSidebarSearch(event)"/>
     </div>
 
     <div class="sidebar__scroll">
@@ -245,7 +247,7 @@
   <div class="modal">
     <h2>✏️ Edit Profile</h2>
     <div class="pic-upload">
-      <div class="pic-preview" id="edit-pic-preview" onclick="document.getElementById('edit-pic-input').click()">📷</div>
+      <div class="pic-preview" id="edit-pic-preview" onclick="document.getElementById('edit-pic-input').click()"><span class="pic-preview__icon">📷</span></div>
       <input type="file" id="edit-pic-input" accept="image/*" style="display:none" onchange="previewEditPic(this)"/>
       <div><div class="form-label" style="margin-bottom:2px">Profile Picture</div><div class="form-hint">Click to change</div></div>
     </div>
@@ -305,6 +307,41 @@
   </div>
 </div>
 
+<!-- Theme Picker -->
+<div class="modal-overlay" id="modal-theme">
+  <div class="modal">
+    <h2>🎨 Choose Theme</h2>
+    <div class="theme-grid" id="theme-grid"></div>
+    <div class="divider">Import Theme File</div>
+    <div class="form-group">
+      <input type="file" id="theme-file-input" accept=".json" style="display:none" onchange="importThemeFile(this)"/>
+      <button class="btn btn-secondary" onclick="document.getElementById('theme-file-input').click()">📂 Import Theme (.json)</button>
+      <div class="form-hint" style="margin-top:6px">Import a JSON file with CSS variable overrides.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="hideModal('modal-theme')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Background Picker -->
+<div class="modal-overlay" id="modal-chat-bg">
+  <div class="modal">
+    <h2>🖼️ Chat Background</h2>
+    <p style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Choose a background for this chat window.</p>
+    <div class="bg-grid" id="bg-grid"></div>
+    <div class="divider">Custom Image</div>
+    <div class="form-group">
+      <input type="file" id="bg-file-input" accept="image/*" style="display:none" onchange="importBgImage(this)"/>
+      <button class="btn btn-secondary" onclick="document.getElementById('bg-file-input').click()">📂 Upload Image</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="clearChatBg()">Remove Background</button>
+      <button class="btn btn-secondary" onclick="hideModal('modal-chat-bg')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════════
      UTILITIES
      ════════════════════════════════════════ -->
@@ -317,6 +354,7 @@
      ════════════════════════════════════════ -->
 <script src="/js/state.js"></script>
 <script src="/js/utils.js"></script>
+<script src="/js/theme.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/profile.js"></script>
 <script src="/js/sidebar.js"></script>

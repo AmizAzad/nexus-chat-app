@@ -56,7 +56,7 @@ async function showEditProfileModal() {
     document.getElementById('edit-status-msg').value = p.statusMessage || '';
     NexusState.editProfilePic = p.profilePicture || null;
     document.getElementById('edit-pic-preview').innerHTML = p.profilePicture
-      ? `<img src="${p.profilePicture}"/>` : '📷';
+      ? `<img src="${p.profilePicture}"/>` : '<span class="pic-preview__icon">📷</span>';
     showModal('modal-edit-profile');
   } catch (err) {
     showToast('Failed to load profile', 'error');

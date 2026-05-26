@@ -118,6 +118,8 @@ function renderMainArea() {
     </div>`;
 
   document.getElementById('message-input').focus();
+  // Apply stored background for this chat
+  applyChatBackground();
 }
 
 /* ── Messages rendering ───────────────── */

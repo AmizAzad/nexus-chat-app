@@ -8,7 +8,18 @@ function switchTab(t) {
   );
   document.getElementById('tab-login').style.display = t === 'login' ? '' : 'none';
   document.getElementById('tab-register').style.display = t === 'register' ? '' : 'none';
+  document.getElementById('tab-register-profile').style.display = 'none';
   document.getElementById('auth-error').textContent = '';
+}
+
+function goToProfileStep() {
+  const u = document.getElementById('reg-username').value.trim();
+  const p = document.getElementById('reg-password').value;
+  if (!u) { setAuthError('Username is required'); return; }
+  if (!p || p.length < 6) { setAuthError('Password must be at least 6 characters'); return; }
+  document.getElementById('auth-error').textContent = '';
+  document.getElementById('tab-register').style.display = 'none';
+  document.getElementById('tab-register-profile').style.display = '';
 }
 
 function quickLogin(u) {
@@ -97,6 +108,7 @@ async function previewRegPic(input) {
 
 // Expose
 window.switchTab = switchTab;
+window.goToProfileStep = goToProfileStep;
 window.quickLogin = quickLogin;
 window.doLogin = doLogin;
 window.doRegister = doRegister;

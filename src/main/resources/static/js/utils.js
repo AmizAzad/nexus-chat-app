@@ -13,6 +13,15 @@ async function api(path, method = 'GET', body = null) {
   if (body !== null) opts.body = JSON.stringify(body);
 
   const res = await fetch(path, opts);
+  if (res.status === 401) {
+    localStorage.removeItem('jwt');
+    // Reload to show auth screen if not already there
+    if (document.getElementById('app')?.classList.contains('show')) {
+      showToast('Session expired. Please sign in again.', 'error');
+      setTimeout(() => location.reload(), 1500);
+    }
+    throw new Error(401);
+  }
   if (!res.ok) throw new Error(res.status);
   const txt = await res.text();
   return txt ? JSON.parse(txt) : null;
